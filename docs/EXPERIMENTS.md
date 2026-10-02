@@ -35,6 +35,20 @@ Interpretation rule:
 ## E3 — Shock severity
 Vary R_L while keeping the network and other parameters controlled.
 
+## E3 — Shock severity
+Vary low_return (R_L) while keeping the network, risky exposure fractions, high-state return, shock probability, balance sheets, and clearing settings fixed.
+
+Baseline grid:
+- R_L = 0.90, 0.80, 0.70, 0.60, 0.50
+- The existing baseline is R_L = 0.70.
+
+Interpretation:
+- Lower R_L means a more severe adverse risky-asset state.
+- Because the same trial seed sequence is reused across all values, the realized bad/good shock pattern is held comparable.
+- Report systemic-failure probability and Monte Carlo confidence intervals.
+- This is a shock-severity experiment, not a calibration exercise; the grid is chosen before inspecting results.
+- A result that looks monotonic is still an empirical property of this simulator, not a general theorem.
+
 ## E4 — Heterogeneous network structure
 Hold average density approximately fixed while varying p_LL, p_RR, p_LR, p_RL. This tests whether placement of connections matters beyond density.
 
