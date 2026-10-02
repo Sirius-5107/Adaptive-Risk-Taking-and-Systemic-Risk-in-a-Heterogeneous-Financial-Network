@@ -67,3 +67,24 @@ def test_payments_are_always_bounded():
 
     assert np.all(result.payments >= 0.0)
     assert np.all(result.payments <= 1.0)
+
+
+def test_cyclic_contagion_propagates_until_stable():
+    # A and B owe each other 100.
+    # A also owes 60 externally and starts with no assets.
+    # Starting from full payment, the feedback loop is:
+    # [1.0, 1.0] -> [0.4, 1.0] -> [0.0, 0.4] -> [0.0, 0.0].
+    assets = np.array([0.0, 0.0])
+    liabilities = np.array([60.0, 0.0])
+    E = np.array(
+        [
+            [0.0, 100.0],
+            [100.0, 0.0],
+        ]
+    )
+
+    result = solve_clearing(assets, liabilities, E)
+
+    assert result.converged
+    np.testing.assert_allclose(result.payments, [0.0, 0.0])
+    assert result.iterations > 1
