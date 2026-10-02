@@ -22,9 +22,11 @@ class SimulationResult:
     external_liabilities: np.ndarray
 
     @property
-    def default_fraction(self) -> float:
-        """Fraction of institutions paying less than their full obligation."""
-        return float(np.mean(self.clearing.payments < 1.0))
+    def default_fraction(self, threshold: float = 1.0 - 1e-8) -> float:
+        """Fraction of institutions whose payment fraction is below default threshold."""
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError("threshold must be in [0, 1].")
+        return float(np.mean(self.clearing.payments < threshold))
 
 
 def simulate_once(
