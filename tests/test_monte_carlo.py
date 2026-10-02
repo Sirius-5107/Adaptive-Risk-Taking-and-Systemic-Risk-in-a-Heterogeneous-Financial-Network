@@ -1,4 +1,8 @@
-from src.experiments import run_cross_group_connectivity_sweep, run_parameter_sweep
+from src.experiments import (
+    run_cross_group_connectivity_sweep,
+    run_parameter_sweep,
+    run_shock_severity_sweep,
+)
 from src.monte_carlo import MonteCarloConfig, run_monte_carlo
 
 
@@ -47,3 +51,10 @@ def test_cross_group_connectivity_default_grid():
     assert len(results) == 11
     assert results[0].value == 0.0
     assert results[-1].value == 0.20
+
+
+def test_shock_severity_default_grid():
+    results = run_shock_severity_sweep(trials=5)
+    assert [point.value for point in results] == [0.90, 0.80, 0.70, 0.60, 0.50]
+    assert all(point.parameter == "low_return" for point in results)
+    assert all(point.result.trials == 5 for point in results)
