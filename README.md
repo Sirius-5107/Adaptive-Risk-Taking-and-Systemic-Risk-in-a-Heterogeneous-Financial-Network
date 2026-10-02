@@ -13,11 +13,12 @@ Random financial network → external shock → payment clearing → contagion �
 ## Project stages
 1. Deterministic clearing tests
 2. Random heterogeneous network
-3. Monte Carlo systemic-risk estimation
-4. Connectivity, shock, and heterogeneity experiments
-5. Adaptive risky/conservative dynamics
-6. Robustness and sensitivity analysis
-7. Optional simple ML analysis
+3. One complete stochastic simulation
+4. Monte Carlo systemic-risk estimation
+5. Connectivity, shock, and heterogeneity experiments
+6. Adaptive risky/conservative dynamics
+7. Robustness and sensitivity analysis
+8. Optional simple ML analysis
 
 ## Research principles
 - Validate the simulator before large experiments.
