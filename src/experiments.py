@@ -81,3 +81,22 @@ def run_cross_group_connectivity_sweep(
         confidence=confidence,
         seed=seed,
     )
+
+
+def run_shock_severity_sweep(
+    *,
+    values: Sequence[float] = (0.90, 0.80, 0.70, 0.60, 0.50),
+    trials: int = 2000,
+    systemic_threshold: float = 0.30,
+    confidence: float = 0.95,
+    seed: int = 20261001,
+) -> tuple[ParameterSweepPoint, ...]:
+    """Run E3 by varying the adverse-state risky return R_L."""
+    return run_parameter_sweep(
+        "low_return",
+        values,
+        trials=trials,
+        systemic_threshold=systemic_threshold,
+        confidence=confidence,
+        seed=seed,
+    )
