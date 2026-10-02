@@ -90,3 +90,27 @@ It proves that our implementation correctly captures the first mechanism we care
 asset shock → reduced payment → counterparty receives less → counterparty's payment may fall.
 
 Only after these deterministic checks pass should we introduce randomness.
+
+
+## Cyclic-contagion check
+
+A second deterministic case verifies why iterative clearing is needed.
+
+Two institutions owe each other 100:
+
+A ↔ B
+
+A starts with zero external assets and owes 60 to an external creditor. B starts with zero external assets and has no external liability.
+
+Starting from the initial assumption that both institutions pay in full, the solver updates the payment vector as:
+
+[1.00, 1.00]
+→ [0.40, 1.00]
+→ [0.00, 0.40]
+→ [0.00, 0.00]
+
+The final fixed point is therefore:
+
+[p_A, p_B] = [0.00, 0.00]
+
+The test demonstrates the feedback mechanism directly: A's reduced payment lowers B's incoming funds, which lowers B's payment to A, which further reduces A's available funds.
