@@ -5,11 +5,12 @@
 - [x] Phase 2 — Random heterogeneous network
 - [x] Phase 3 — One complete stochastic simulation
 - [ ] Phase 4 — Monte Carlo
-- [ ] Phase 4 — Parameter experiments
+- [x] Phase 4 — Monte Carlo systemic-risk estimation
+- [ ] Phase 5 — Parameter experiments
 - [ ] Phase 5 — Adaptive dynamics
 - [ ] Phase 6 — Robustness
 - [ ] Phase 7 — Optional ML
 - [ ] Phase 8 — Presentation
 - [ ] Phase 9 — Mock defence
 
-The next implementation checkpoint is a Monte Carlo systemic-risk estimator built on the complete one-run simulation.
+The next implementation checkpoint is a controlled parameter experiment, beginning with cross-group connectivity.
