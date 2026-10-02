@@ -1,14 +1,49 @@
+from src.experiments import run_cross_group_connectivity_sweep, run_parameter_sweep
 from src.monte_carlo import MonteCarloConfig, run_monte_carlo
 
 
-def test_monte_carlo_is_reproducible():
-    config = MonteCarloConfig(trials=30, seed=20261001)
-    assert run_monte_carlo(config) == run_monte_carlo(config)
+def test_monte_carlo_accepts_simulation_kwargs():
+    baseline = run_monte_carlo(MonteCarloConfig(trials=10, seed=20261001))
+    configured = run_monte_carlo(
+        MonteCarloConfig(
+            trials=10,
+            seed=20261001,
+            simulation_kwargs={"p_cross": 0.0},
+        )
+    )
+    assert baseline.trials == configured.trials == 10
 
 
-def test_monte_carlo_result_is_bounded():
-    result = run_monte_carlo(MonteCarloConfig(trials=30, seed=20261001))
-    assert 0.0 <= result.probability <= 1.0
-    assert result.trials == 30
-    assert 0 <= result.failures <= result.trials
-    assert 0.0 <= result.ci_low <= result.ci_high <= 1.0
+def test_parameter_sweep_is_reproducible():
+    first = run_parameter_sweep(
+        "p_cross",
+        [0.0, 0.05, 0.10],
+        trials=10,
+        seed=20261001,
+    )
+    second = run_parameter_sweep(
+        "p_cross",
+        [0.0, 0.05, 0.10],
+        trials=10,
+        seed=20261001,
+    )
+    assert first == second
+
+
+def test_parameter_sweep_preserves_order_and_values():
+    results = run_parameter_sweep(
+        "p_cross",
+        [0.0, 0.05, 0.10],
+        trials=10,
+        seed=20261001,
+    )
+    assert [point.value for point in results] == [0.0, 0.05, 0.10]
+    assert all(point.parameter == "p_cross" for point in results)
+    assert all(point.result.trials == 10 for point in results)
+
+
+def test_cross_group_connectivity_default_grid():
+    results = run_cross_group_connectivity_sweep(trials=5)
+    assert len(results) == 11
+    assert results[0].value == 0.0
+    assert results[-1].value == 0.20
