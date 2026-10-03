@@ -31,6 +31,10 @@ Risky returns have two states:
 After the external shock:
 A'_i = A_i[(1-q_i) + q_i R_i]
 
+For E5, private outcome is measured by terminal equity after clearing:
+W_i = A'_i + I_i - X_i - P_i
+where P_i is the interbank amount actually paid. This is an experiment-specific payoff measure, not a universal definition of investor utility.
+
 ## 4. Clearing
 Let r_i be institution i's payment fraction.
 
