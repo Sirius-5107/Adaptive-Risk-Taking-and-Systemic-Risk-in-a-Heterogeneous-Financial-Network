@@ -158,7 +158,7 @@ def _solve_p_within(
 
 def run_matched_density_network_sweep(
     *,
-    p_cross_values: Sequence[float] = tuple(i / 40 for i in range(7)),
+    p_cross_values: Sequence[float] = tuple(i / 40 for i in range(6)),
     trials: int = 2000,
     systemic_threshold: float = 0.30,
     confidence: float = 0.95,
