@@ -21,7 +21,6 @@ class SimulationResult:
     external_assets: np.ndarray
     external_liabilities: np.ndarray
 
-    @property
     def default_fraction(self, threshold: float = 1.0 - 1e-8) -> float:
         """Fraction of institutions whose payment fraction is below default threshold."""
         if not 0.0 <= threshold <= 1.0:
