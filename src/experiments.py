@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
-from .metrics import MonteCarloResult
+from .metrics import MonteCarloResult, estimate_failure_probability, systemic_failure
 from .monte_carlo import MonteCarloConfig, run_monte_carlo
+from .simulation import simulate_once
 
 
 @dataclass(frozen=True)
