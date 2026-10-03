@@ -63,11 +63,20 @@ Interpretation:
 - The baseline parameter choice remains fixed independently of observed results.
 
 ## E5 — Risk-taking
-Vary q_R/q_L. Record:
-- private payoff
-- default probability
-- systemic-risk probability
-- trade-off between individual and system outcomes
+Vary q_R while holding q_L and the rest of the baseline model fixed.
+
+Implementation:
+- run_risk_taking_sweep() varies q_R over 0.40, 0.50, 0.60, 0.70, 0.80.
+- Each value uses the same trial seed sequence, so the network realization and shock uniforms are comparable across exposure levels.
+- Private payoff is mean terminal equity after clearing, computed separately for low-risk and high-risk groups.
+- Also record group-specific default rates and systemic-failure probability with its Monte Carlo confidence interval.
+- q_L remains fixed at 0.20.
+
+Interpretation:
+- This experiment asks whether greater risky-asset exposure changes private outcomes and system-level outcomes differently.
+- A higher high-risk-group payoff does not by itself imply that risk-taking is socially beneficial.
+- A higher systemic-failure probability does not identify the cause without considering the accompanying group outcomes and model mechanics.
+- Results are empirical properties of the simulator; they are not evidence that the same relationship holds in real financial systems.
 
 ## E6 — Adaptive dynamics
 Vary x_0 and η. Track x_t and systemic outcomes.
