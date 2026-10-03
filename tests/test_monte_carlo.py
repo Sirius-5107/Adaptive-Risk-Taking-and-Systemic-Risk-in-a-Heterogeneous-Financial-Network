@@ -109,3 +109,66 @@ def test_risk_taking_sweep_rejects_invalid_exposure():
         pass
     else:
         raise AssertionError("Expected ValueError for q_high > 1.")
+
+
+def test_adaptive_update_matches_replicator_rule():
+    from src.experiments import _adaptive_update
+
+    assert _adaptive_update(0.50, 0.10, 1.10, 0.90) == 0.505
+    assert _adaptive_update(0.50, 0.10, 0.90, 1.10) == 0.495
+
+
+def test_adaptive_dynamics_reproduces():
+    from src.experiments import run_adaptive_dynamics
+
+    first = run_adaptive_dynamics(
+        initial_x=0.50,
+        eta=0.10,
+        steps=3,
+        replications_per_step=2,
+        seed=20261001,
+    )
+    second = run_adaptive_dynamics(
+        initial_x=0.50,
+        eta=0.10,
+        steps=3,
+        replications_per_step=2,
+        seed=20261001,
+    )
+    assert first == second
+
+
+def test_adaptive_dynamics_preserves_bounds_and_length():
+    from src.experiments import run_adaptive_dynamics
+
+    result = run_adaptive_dynamics(
+        initial_x=0.50,
+        eta=0.10,
+        steps=4,
+        replications_per_step=2,
+        seed=20261001,
+    )
+    assert len(result.steps) == 4
+    assert result.initial_x == 0.50
+    assert 0.0 <= result.final_x <= 1.0
+    assert all(0.0 <= step.x_before <= 1.0 for step in result.steps)
+    assert all(0.0 <= step.x_after <= 1.0 for step in result.steps)
+    assert all(0.0 <= step.systemic_failure_probability <= 1.0 for step in result.steps)
+
+
+def test_adaptive_dynamics_rejects_invalid_inputs():
+    from src.experiments import run_adaptive_dynamics
+
+    for kwargs in (
+        {"initial_x": 0.0},
+        {"initial_x": 1.0},
+        {"eta": -0.1},
+        {"steps": 0},
+        {"replications_per_step": 0},
+    ):
+        try:
+            run_adaptive_dynamics(**kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Expected ValueError for {kwargs}.")
