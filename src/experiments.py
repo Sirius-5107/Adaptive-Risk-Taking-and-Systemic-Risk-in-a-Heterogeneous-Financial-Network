@@ -206,8 +206,137 @@ def run_matched_density_network_sweep(
 
     return tuple(points)
 
+
+@dataclass(frozen=True)
+class AdaptiveStep:
+    """One step of the population-level adaptive dynamics."""
+
+    step: int
+    x_before: float
+    mean_payoff_low: float
+    mean_payoff_high: float
+    payoff_difference: float
+    systemic_failure_probability: float
+    x_after: float
+
+
+@dataclass(frozen=True)
+class AdaptiveDynamicsResult:
+    """Trajectory produced by the adaptive risk-taking experiment."""
+
+    initial_x: float
+    final_x: float
+    steps: tuple[AdaptiveStep, ...]
+
+
+def _adaptive_update(
+    x: float,
+    eta: float,
+    payoff_high: float,
+    payoff_low: float,
+) -> float:
+    """Apply one bounded replicator-style population update."""
+    return float(
+        min(
+            1.0,
+            max(
+                0.0,
+                x + eta * x * (1.0 - x) * (payoff_high - payoff_low),
+            ),
+        )
+    )
+
+
+def run_adaptive_dynamics(
+    *,
+    initial_x: float = 0.50,
+    eta: float = 0.10,
+    steps: int = 20,
+    replications_per_step: int = 100,
+    systemic_threshold: float = 0.30,
+    seed: int = 20261001,
+    q_low: float = 0.20,
+    q_high: float = 0.60,
+) -> AdaptiveDynamicsResult:
+    """Run E6 as repeated population-level adaptation.
+
+    x is the fraction using the higher-risk strategy. At each step, a fresh
+    set of stochastic environments is simulated at the current composition.
+    Mean terminal equity is used as the strategy payoff, matching E5.
+    Multiple replications per step reduce noise before updating x.
+
+    This is a computational mean-field analogue: institutions do not switch
+    identities individually inside one network. Instead, the population
+    fraction is updated from the difference in group-average payoffs.
+    """
+    if not 0.0 < initial_x < 1.0:
+        raise ValueError("initial_x must be strictly between 0 and 1.")
+    if eta < 0.0:
+        raise ValueError("eta must be non-negative.")
+    if steps < 1:
+        raise ValueError("steps must be at least 1.")
+    if replications_per_step < 1:
+        raise ValueError("replications_per_step must be at least 1.")
+    if not 0.0 <= q_low <= 1.0 or not 0.0 <= q_high <= 1.0:
+        raise ValueError("q_low and q_high must be in [0, 1].")
+
+    x = float(initial_x)
+    trajectory: list[AdaptiveStep] = []
+
+    for step in range(steps):
+        low_payoff_total = 0.0
+        high_payoff_total = 0.0
+        systemic_failures = 0
+
+        for replication in range(replications_per_step):
+            simulation_seed = seed + step * replications_per_step + replication
+            simulation = simulate_once(
+                seed=simulation_seed,
+                fraction_low_risk=1.0 - x,
+                q_low=q_low,
+                q_high=q_high,
+            )
+            low_payoff, high_payoff = _terminal_equity_by_group(simulation)
+            low_payoff_total += low_payoff
+            high_payoff_total += high_payoff
+            systemic_failures += int(
+                systemic_failure(
+                    simulation.default_fraction(),
+                    systemic_threshold,
+                )
+            )
+
+        mean_low = low_payoff_total / replications_per_step
+        mean_high = high_payoff_total / replications_per_step
+        payoff_difference = mean_high - mean_low
+        x_after = _adaptive_update(
+            x, eta, payoff_high=mean_high, payoff_low=mean_low
+        )
+
+        trajectory.append(
+            AdaptiveStep(
+                step=step,
+                x_before=x,
+                mean_payoff_low=mean_low,
+                mean_payoff_high=mean_high,
+                payoff_difference=payoff_difference,
+                systemic_failure_probability=(
+                    systemic_failures / replications_per_step
+                ),
+                x_after=x_after,
+            )
+        )
+        x = x_after
+
+    return AdaptiveDynamicsResult(
+        initial_x=float(initial_x),
+        final_x=x,
+        steps=tuple(trajectory),
+    )
+
 @dataclass(frozen=True)
 class RiskTakingSweepPoint:
+
     """Monte Carlo outcomes for one high-risk exposure level."""
 
     q_high: float
