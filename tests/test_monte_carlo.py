@@ -4,11 +4,10 @@ from src.experiments import (
     run_parameter_sweep,
     run_shock_severity_sweep,
 )
+from src.monte_carlo import MonteCarloConfig, run_monte_carlo
 
 
 def test_monte_carlo_accepts_simulation_kwargs():
-    from src.monte_carlo import MonteCarloConfig, run_monte_carlo
-
     baseline = run_monte_carlo(MonteCarloConfig(trials=5, seed=20261001))
     configured = run_monte_carlo(
         MonteCarloConfig(
