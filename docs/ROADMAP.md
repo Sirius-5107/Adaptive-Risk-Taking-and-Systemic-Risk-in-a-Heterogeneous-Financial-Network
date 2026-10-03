@@ -10,10 +10,10 @@
 - [x] Phase 5 — E4 matched-density heterogeneous network experiment
 - [x] Phase 5 — E5 risk-taking experiment
 - [ ] Phase 5 — Remaining parameter experiments
-- [ ] Phase 5 — Adaptive dynamics
+- [x] Phase 5 — Adaptive dynamics
 - [ ] Phase 6 — Robustness
 - [ ] Phase 7 — Optional ML
 - [ ] Phase 8 — Presentation
 - [ ] Phase 9 — Mock defence
 
-The current research checkpoint is E5: test whether high-risk exposure changes private terminal equity and systemic outcomes differently. The next step is E6, implementing the adaptive strategy dynamics.
+The current research checkpoint is E6: test whether population-level risk-taking adapts when high-risk and low-risk strategies receive different terminal-equity payoffs. The next step is E7 robustness.
