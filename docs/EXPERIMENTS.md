@@ -50,7 +50,20 @@ Interpretation:
 - A result that looks monotonic is still an empirical property of this simulator, not a general theorem.
 
 ## E4 — Heterogeneous network structure
-Hold average density approximately fixed while varying p_LL, p_RR, p_LR, p_RL. This tests whether placement of connections matters beyond density.
+Hold expected directed network density fixed while varying how links are placed within versus across the two risk groups. This tests whether network structure matters beyond overall connectivity.
+
+Implementation:
+- run_matched_density_network_sweep() varies p_cross and solves for p_within so expected density equals the baseline configuration (p_within=0.10, p_cross=0.05).
+- Default p_cross grid: 0.000, 0.025, 0.050, 0.075, 0.100, 0.125, 0.150.
+- For the 50/50 baseline, p_within values are approximately 0.153, 0.128, 0.100, 0.075, 0.050, 0.025, 0.000.
+- The same Monte Carlo trial seed sequence is reused across configurations.
+- Matching is on expected density, not realized edge count. Individual random networks can still contain different numbers of edges; exact edge-count matching would require a different network-construction design.
+
+Interpretation:
+- E4 isolates link placement more cleanly than E2 because expected density is controlled.
+- Report Monte Carlo confidence intervals.
+- No monotonic relationship is assumed in advance.
+- The baseline parameter choice remains fixed independently of observed results.
 
 ## E5 — Risk-taking
 Vary q_R/q_L. Record:
