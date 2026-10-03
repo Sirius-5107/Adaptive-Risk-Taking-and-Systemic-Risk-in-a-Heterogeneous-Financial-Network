@@ -33,9 +33,6 @@ Interpretation rule:
 - Preserve the baseline parameter choice independently of observed results.
 
 ## E3 — Shock severity
-Vary R_L while keeping the network and other parameters controlled.
-
-## E3 — Shock severity
 Vary low_return (R_L) while keeping the network, risky exposure fractions, high-state return, shock probability, balance sheets, and clearing settings fixed.
 
 Baseline grid:
@@ -55,7 +52,7 @@ Hold expected directed network density fixed while varying how links are placed 
 Implementation:
 - run_matched_density_network_sweep() varies p_cross and solves for p_within so expected density equals the baseline configuration (p_within=0.10, p_cross=0.05).
 - Default p_cross grid: 0.000, 0.025, 0.050, 0.075, 0.100, 0.125.
-- For the 50/50 baseline, p_within values are approximately 0.151, 0.126, 0.100, 0.074, 0.049, 0.024.
+- For the 50/50 baseline, p_within values are approximately 0.151, 0.126, 0.100, 0.075, 0.049, 0.024.
 - The same Monte Carlo trial seed sequence is reused across configurations.
 - Matching is on expected density, not realized edge count. Individual random networks can still contain different numbers of edges; exact edge-count matching would require a different network-construction design.
 
