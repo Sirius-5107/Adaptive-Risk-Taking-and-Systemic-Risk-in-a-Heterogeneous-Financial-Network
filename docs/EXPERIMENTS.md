@@ -79,7 +79,24 @@ Interpretation:
 - Results are empirical properties of the simulator; they are not evidence that the same relationship holds in real financial systems.
 
 ## E6 — Adaptive dynamics
-Vary x_0 and η. Track x_t and systemic outcomes.
+Let the population fraction using the higher-risk strategy be x_t. Update it from the difference between the two groups' average terminal equity.
+
+Implementation:
+- run_adaptive_dynamics() starts from an interior composition x_0 and runs a fixed number of adaptation steps.
+- At each step, the simulator is run at the current composition, using fraction_low_risk = 1 - x_t.
+- Each step uses multiple independent replications and averages terminal equity before updating. This reduces the chance that one random shock determines the direction of adaptation.
+- The update is:
+  x_(t+1) = clip[x_t + eta*x_t*(1-x_t)*(U_R-U_L), 0, 1]
+- U_R and U_L are the mean terminal-equity payoffs already defined for E5.
+- The same deterministic seed rule is used for reproducibility; later steps use new stochastic environments.
+- The experiment records x_t, both payoffs, their difference, and the systemic-failure rate observed at each step.
+
+Interpretation:
+- A movement in x means the simulated population composition responds to the model's payoff difference; it is not evidence that real institutions adapt this way.
+- Because terminal-equity differences can be small, eta is a sensitivity parameter controlling the speed of adaptation, not a calibrated behavioural constant.
+- This implementation is population-level: institutions are not individually switching identities inside a single network. It is a computational mean-field analogue of a replicator-style rule.
+- If x approaches 0 or 1, the factor x(1-x) naturally slows further movement.
+- Do not interpret the direction of adaptation as a theorem or as evidence about real financial behaviour.
 
 ## E7 — Robustness
 Repeat with:
