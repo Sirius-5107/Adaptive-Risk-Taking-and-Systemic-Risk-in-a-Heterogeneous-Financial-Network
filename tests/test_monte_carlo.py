@@ -67,3 +67,45 @@ def test_matched_density_sweep_is_reproducible():
     first = run_matched_density_network_sweep(trials=5, seed=20261001)
     second = run_matched_density_network_sweep(trials=5, seed=20261001)
     assert first == second
+
+
+def test_risk_taking_sweep_reproduces():
+    from src.experiments import run_risk_taking_sweep
+
+    first = run_risk_taking_sweep(
+        values=[0.40, 0.60, 0.80],
+        trials=5,
+        seed=20261001,
+    )
+    second = run_risk_taking_sweep(
+        values=[0.40, 0.60, 0.80],
+        trials=5,
+        seed=20261001,
+    )
+    assert first == second
+
+
+def test_risk_taking_sweep_preserves_values_and_bounds():
+    from src.experiments import run_risk_taking_sweep
+
+    results = run_risk_taking_sweep(
+        values=[0.40, 0.60, 0.80],
+        trials=5,
+        seed=20261001,
+    )
+    assert [point.q_high for point in results] == [0.40, 0.60, 0.80]
+    assert all(0.0 <= point.systemic_failure_probability <= 1.0 for point in results)
+    assert all(0.0 <= point.default_rate_low <= 1.0 for point in results)
+    assert all(0.0 <= point.default_rate_high <= 1.0 for point in results)
+    assert all(point.trials == 5 for point in results)
+
+
+def test_risk_taking_sweep_rejects_invalid_exposure():
+    from src.experiments import run_risk_taking_sweep
+
+    try:
+        run_risk_taking_sweep(values=[1.1], trials=1)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected ValueError for q_high > 1.")
