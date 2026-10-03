@@ -87,6 +87,8 @@ where U_R and U_L are average payoffs for risky and conservative strategies.
 
 This is a transparent computational analogue, **not a reproduction of published analytical dynamics**.
 
+In E6, the simulator applies this rule repeatedly. At each step, x_t determines the population fraction using R, fresh stochastic environments are simulated, and U_R and U_L are estimated from average terminal equity. Multiple replications per step reduce simulation noise. This is a population-level mean-field mechanism: individual institutions do not switch strategy inside one network.
+
 ## Hypotheses
 H1: Cross-group connectivity changes systemic-risk probability.
 H2: More severe shocks increase systemic risk.
