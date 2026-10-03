@@ -8,6 +8,7 @@
 - [x] Phase 5 — E2 controlled parameter experiment: cross-group connectivity
 - [x] Phase 5 — E3 controlled parameter experiment: shock severity
 - [x] Phase 5 — E4 matched-density heterogeneous network experiment
+- [x] Phase 5 — E5 risk-taking experiment
 - [ ] Phase 5 — Remaining parameter experiments
 - [ ] Phase 5 — Adaptive dynamics
 - [ ] Phase 6 — Robustness
@@ -15,4 +16,4 @@
 - [ ] Phase 8 — Presentation
 - [ ] Phase 9 — Mock defence
 
-The current research checkpoint is E4: compare within-group versus cross-group connection structure at fixed expected network density. The next experiment is E5, testing whether higher risk-taking changes private outcomes and systemic outcomes differently.
+The current research checkpoint is E5: test whether high-risk exposure changes private terminal equity and systemic outcomes differently. The next step is E6, implementing the adaptive strategy dynamics.
