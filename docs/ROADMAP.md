@@ -7,6 +7,7 @@
 - [x] Phase 4 — Monte Carlo systemic-risk estimation
 - [x] Phase 5 — E2 controlled parameter experiment: cross-group connectivity
 - [x] Phase 5 — E3 controlled parameter experiment: shock severity
+- [x] Phase 5 — E4 matched-density heterogeneous network experiment
 - [ ] Phase 5 — Remaining parameter experiments
 - [ ] Phase 5 — Adaptive dynamics
 - [ ] Phase 6 — Robustness
@@ -14,4 +15,4 @@
 - [ ] Phase 8 — Presentation
 - [ ] Phase 9 — Mock defence
 
-The current research checkpoint is E3: vary adverse-state risky return R_L while holding the baseline model and trial seed sequence fixed. The next experiment is heterogeneous network structure at approximately matched density.
+The current research checkpoint is E4: compare within-group versus cross-group connection structure at fixed expected network density. The next experiment is E5, testing whether higher risk-taking changes private outcomes and systemic outcomes differently.
