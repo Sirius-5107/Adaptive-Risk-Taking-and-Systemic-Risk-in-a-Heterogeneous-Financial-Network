@@ -204,3 +204,115 @@ def run_matched_density_network_sweep(
         )
 
     return tuple(points)
+
+@dataclass(frozen=True)
+class RiskTakingSweepPoint:
+    """Monte Carlo outcomes for one high-risk exposure level."""
+
+    q_high: float
+    systemic_failure_probability: float
+    systemic_failure_ci_low: float
+    systemic_failure_ci_high: float
+    mean_terminal_equity_low: float
+    mean_terminal_equity_high: float
+    default_rate_low: float
+    default_rate_high: float
+    trials: int
+
+
+def _terminal_equity_by_group(simulation) -> tuple[float, float]:
+    """Return mean terminal equity for low- and high-risk groups."""
+    payments = simulation.clearing.payments
+    obligations = simulation.network.obligations
+    incoming = payments @ obligations
+    interbank_paid = payments * obligations.sum(axis=1)
+    equity = (
+        simulation.shock.shocked_assets
+        + incoming
+        - simulation.external_liabilities
+        - interbank_paid
+    )
+
+    groups = simulation.network.groups
+    low = equity[groups == 0]
+    high = equity[groups == 1]
+    if low.size == 0 or high.size == 0:
+        raise ValueError("Both risk groups must contain at least one institution.")
+    return float(low.mean()), float(high.mean())
+
+
+def run_risk_taking_sweep(
+    *,
+    values: Sequence[float] = (0.40, 0.50, 0.60, 0.70, 0.80),
+    trials: int = 2000,
+    systemic_threshold: float = 0.30,
+    confidence: float = 0.95,
+    seed: int = 20261001,
+    q_low: float = 0.20,
+) -> tuple[RiskTakingSweepPoint, ...]:
+    """Run E5 by varying high-risk institutions' risky-asset exposure.
+
+    The same trial seeds are reused across q_high values. This keeps the
+    network and realized shock uniforms comparable while changing only q_high.
+    Private payoff is measured as mean terminal equity after interbank clearing.
+    """
+    if not values:
+        raise ValueError("values must contain at least one value.")
+    if not 0.0 <= q_low <= 1.0:
+        raise ValueError("q_low must be in [0, 1].")
+
+    points: list[RiskTakingSweepPoint] = []
+
+    for q_high in values:
+        q_high = float(q_high)
+        if not 0.0 <= q_high <= 1.0:
+            raise ValueError("q_high values must be in [0, 1].")
+
+        failures = 0
+        low_equity_total = 0.0
+        high_equity_total = 0.0
+        low_defaults = 0
+        high_defaults = 0
+
+        for trial in range(trials):
+            simulation = simulate_once(
+                seed=seed + trial,
+                q_low=q_low,
+                q_high=q_high,
+            )
+            low_equity, high_equity = _terminal_equity_by_group(simulation)
+            low_equity_total += low_equity
+            high_equity_total += high_equity
+
+            groups = simulation.network.groups
+            defaults = simulation.clearing.payments < (1.0 - 1e-8)
+            low_defaults += int((defaults & (groups == 0)).sum())
+            high_defaults += int((defaults & (groups == 1)).sum())
+
+            if systemic_failure(
+                simulation.default_fraction(),
+                systemic_threshold,
+            ):
+                failures += 1
+
+        mc = estimate_failure_probability(
+            failures, trials, confidence=confidence
+        )
+        low_count = trials * (simulation.network.groups == 0).sum()
+        high_count = trials * (simulation.network.groups == 1).sum()
+
+        points.append(
+            RiskTakingSweepPoint(
+                q_high=q_high,
+                systemic_failure_probability=mc.probability,
+                systemic_failure_ci_low=mc.ci_low,
+                systemic_failure_ci_high=mc.ci_high,
+                mean_terminal_equity_low=low_equity_total / trials,
+                mean_terminal_equity_high=high_equity_total / trials,
+                default_rate_low=low_defaults / low_count,
+                default_rate_high=high_defaults / high_count,
+                trials=trials,
+            )
+        )
+
+    return tuple(points)
