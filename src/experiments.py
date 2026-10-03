@@ -100,3 +100,107 @@ def run_shock_severity_sweep(
         confidence=confidence,
         seed=seed,
     )
+@dataclass(frozen=True)
+class MatchedDensitySweepPoint:
+    """Monte Carlo result for one matched-density network configuration."""
+
+    p_within: float
+    p_cross: float
+    expected_density: float
+    result: MonteCarloResult
+
+
+def _expected_directed_density(
+    n: int,
+    fraction_low_risk: float,
+    p_within: float,
+    p_cross: float,
+) -> float:
+    """Return expected directed edge density excluding self-loops."""
+    if n <= 1:
+        raise ValueError("n must be greater than 1.")
+
+    n_low = int(round(n * fraction_low_risk))
+    n_high = n - n_low
+    same_pairs = n_low * (n_low - 1) + n_high * (n_high - 1)
+    cross_pairs = 2 * n_low * n_high
+    return (
+        same_pairs * p_within + cross_pairs * p_cross
+    ) / (n * (n - 1))
+
+
+def _solve_p_within(
+    n: int,
+    fraction_low_risk: float,
+    p_cross: float,
+    target_density: float,
+) -> float:
+    """Solve p_within for a fixed expected network density."""
+    if not 0.0 <= p_cross <= 1.0:
+        raise ValueError("p_cross must be in [0, 1].")
+
+    n_low = int(round(n * fraction_low_risk))
+    n_high = n - n_low
+    same_pairs = n_low * (n_low - 1) + n_high * (n_high - 1)
+    cross_pairs = 2 * n_low * n_high
+
+    if same_pairs == 0:
+        raise ValueError("At least two institutions must share a group.")
+
+    p_within = (
+        target_density * n * (n - 1) - cross_pairs * p_cross
+    ) / same_pairs
+
+    if not 0.0 <= p_within <= 1.0:
+        raise ValueError("Requested p_cross cannot preserve target density.")
+    return float(p_within)
+
+
+def run_matched_density_network_sweep(
+    *,
+    p_cross_values: Sequence[float] = tuple(i / 40 for i in range(7)),
+    trials: int = 2000,
+    systemic_threshold: float = 0.30,
+    confidence: float = 0.95,
+    seed: int = 20261001,
+    n: int = 100,
+    fraction_low_risk: float = 0.50,
+    target_p_within: float = 0.10,
+    target_p_cross: float = 0.05,
+) -> tuple[MatchedDensitySweepPoint, ...]:
+    """Run E4 with fixed expected density and varying connection placement."""
+    if not p_cross_values:
+        raise ValueError("p_cross_values must contain at least one value.")
+
+    target_density = _expected_directed_density(
+        n, fraction_low_risk, target_p_within, target_p_cross
+    )
+    points: list[MatchedDensitySweepPoint] = []
+
+    for p_cross in p_cross_values:
+        p_cross = float(p_cross)
+        p_within = _solve_p_within(
+            n, fraction_low_risk, p_cross, target_density
+        )
+        config = MonteCarloConfig(
+            trials=trials,
+            systemic_threshold=systemic_threshold,
+            confidence=confidence,
+            seed=seed,
+            simulation_kwargs={
+                "n": n,
+                "fraction_low_risk": fraction_low_risk,
+                "p_within": p_within,
+                "p_cross": p_cross,
+            },
+        )
+        points.append(
+            MatchedDensitySweepPoint(
+                p_within=p_within,
+                p_cross=p_cross,
+                expected_density=target_density,
+                result=run_monte_carlo(config),
+            )
+        )
+
+    return tuple(points)
