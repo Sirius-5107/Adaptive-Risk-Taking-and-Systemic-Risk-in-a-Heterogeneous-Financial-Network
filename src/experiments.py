@@ -376,6 +376,84 @@ def _terminal_equity_by_group(simulation) -> tuple[float, float]:
     return float(low.mean()), float(high.mean())
 
 
+@dataclass(frozen=True)
+class RiskOptimizationPoint:
+    """Objective value for one risk-penalty and exposure pair."""
+
+    lambda_systemic: float
+    q_high: float
+    private_payoff: float
+    systemic_loss: float
+    objective: float
+
+
+@dataclass(frozen=True)
+class RiskOptimizationResult:
+    """System-aware optimum for each systemic-risk penalty."""
+
+    lambda_systemic: float
+    optimal_q_high: float
+    optimal_objective: float
+    points: tuple[RiskOptimizationPoint, ...]
+
+
+def optimize_risk_taking(
+    sweep: Sequence[RiskTakingSweepPoint],
+    *,
+    lambdas: Sequence[float] = (0.0, 0.05, 0.10, 0.20, 0.50),
+) -> tuple[RiskOptimizationResult, ...]:
+    """Find the risk exposure maximizing private payoff minus network loss.
+
+    The objective is
+
+        J(q) = U_R(q) - lambda_systemic * L(q),
+
+    where U_R is mean terminal equity of high-risk institutions and L is
+    mean unpaid interbank obligations. The sweep is assumed to have already
+    been run using common random numbers, so this function adds no simulation
+    noise or computational cost.
+
+    lambda_systemic controls how strongly network damage is penalized. At
+    lambda_systemic=0 the objective is purely private; larger values place
+    more weight on systemic losses.
+    """
+    if not sweep:
+        raise ValueError("sweep must contain at least one result.")
+    if not lambdas:
+        raise ValueError("lambdas must contain at least one value.")
+    if any(float(value) < 0.0 for value in lambdas):
+        raise ValueError("lambdas must be non-negative.")
+
+    results: list[RiskOptimizationResult] = []
+
+    for lambda_systemic in lambdas:
+        penalty = float(lambda_systemic)
+        points = tuple(
+            RiskOptimizationPoint(
+                lambda_systemic=penalty,
+                q_high=point.q_high,
+                private_payoff=point.mean_terminal_equity_high,
+                systemic_loss=point.mean_unpaid_interbank,
+                objective=(
+                    point.mean_terminal_equity_high
+                    - penalty * point.mean_unpaid_interbank
+                ),
+            )
+            for point in sweep
+        )
+        optimum = max(points, key=lambda point: point.objective)
+        results.append(
+            RiskOptimizationResult(
+                lambda_systemic=penalty,
+                optimal_q_high=optimum.q_high,
+                optimal_objective=optimum.objective,
+                points=points,
+            )
+        )
+
+    return tuple(results)
+
+
 def run_risk_taking_sweep(
     *,
     values: Sequence[float] = (0.40, 0.50, 0.60, 0.70, 0.80),
