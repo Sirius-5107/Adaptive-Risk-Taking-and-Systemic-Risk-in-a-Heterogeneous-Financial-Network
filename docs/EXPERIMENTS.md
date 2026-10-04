@@ -63,42 +63,105 @@ Interpretation:
 - The baseline parameter choice remains fixed independently of observed results.
 
 ## E5 — Risk-taking
+
 Vary q_R while holding q_L and the rest of the baseline model fixed.
 
 Implementation:
-- run_risk_taking_sweep() varies q_R over 0.40, 0.50, 0.60, 0.70, 0.80.
+- run_risk_taking_sweep() varies q_R over 0.20, 0.25, ..., 0.80 for the current optimization study.
 - Each value uses the same trial seed sequence, so the network realization and shock uniforms are comparable across exposure levels.
 - Private payoff is mean terminal equity after clearing, computed separately for low-risk and high-risk groups.
-- Also record group-specific default rates and systemic-failure probability with its Monte Carlo confidence interval.
+- Also record payment shortfall, distressed-bank fraction, unpaid interbank obligations, group-specific default rates, and systemic-failure probability with its Monte Carlo confidence interval.
 - q_L remains fixed at 0.20.
+- The current study uses 2,000 trials per grid point.
+
+Observed result:
+- mean high-risk terminal equity increased from about 0.5039 at q_R=0.20 to 0.5163 at q_R=0.80.
+- mean unpaid interbank obligations increased from about 0.0257 to 0.0842.
+- distressed-bank fraction increased from about 0.41% to 0.94%.
+- binary systemic failure remained 0% across the tested grid.
+
+The binary failure metric was therefore too coarse to be the sole optimization loss.
+
+## E6 — System-aware risk-intensity optimization
+
+Use the E5 sweep to evaluate:
+
+J(q_R) = U_R(q_R) - lambda_systemic * L(q_R)
+
+where U_R is mean terminal equity of high-risk institutions and L is mean unpaid interbank obligations.
+
+Because this is post-processing of the same Monte Carlo sweep, optimization adds no simulation noise.
+
+Current best tested q_R values:
+- lambda=0.00 -> q_R=0.80
+- lambda=0.05 -> q_R=0.80
+- lambda=0.10 -> q_R=0.80
+- lambda=0.20 -> q_R=0.50
+- lambda=0.50 -> q_R=0.35
 
 Interpretation:
-- This experiment asks whether greater risky-asset exposure changes private outcomes and system-level outcomes differently.
-- A higher high-risk-group payoff does not by itself imply that risk-taking is socially beneficial.
-- A higher systemic-failure probability does not identify the cause without considering the accompanying group outcomes and model mechanics.
-- Results are empirical properties of the simulator; they are not evidence that the same relationship holds in real financial systems.
+- when systemic losses are ignored, the tested private optimum is at the highest exposure in the grid;
+- increasing the systemic penalty shifts the best tested exposure downward.
 
-## E6 — Adaptive dynamics
+These are grid optima, not continuous analytical optima.
+
+## E7 — Risk-taking population composition
+
+The second decision is the fraction x of institutions using the high-risk strategy, while q_L and q_R are fixed.
+
+Implementation:
+- run_risk_fraction_sweep() varies x over 0.05, 0.10, ..., 0.95.
+- q_L=0.20 and q_R=0.80 in the current study.
+- Each x uses the same trial seed sequence.
+- The sweep records mean terminal equity across all institutions, payment shortfall, distressed-bank fraction, unpaid interbank obligations, and systemic-failure probability.
+- The objective is:
+
+J(x) = U(x) - lambda_systemic * L(x)
+
+where U(x) is mean terminal equity across the whole population.
+
+Current best tested fractions:
+- lambda=0.00 -> x=0.95
+- lambda=0.05 -> x=0.55
+- lambda=0.10 -> x=0.40
+- lambda=0.20 -> x=0.30
+- lambda=0.50 -> x=0.20
+
+The result shows a strong separation between private/aggregate payoff maximization and system-aware composition. As the penalty on unpaid interbank obligations increases, the best tested share of high-risk institutions falls sharply.
+
+These are again discrete-grid optima. They should not be described as exact continuous equilibria.
+
+## E8 — Adaptive dynamics
+
 Let the population fraction using the higher-risk strategy be x_t. Update it from the difference between the two groups' average terminal equity.
 
 Implementation:
 - run_adaptive_dynamics() starts from an interior composition x_0 and runs a fixed number of adaptation steps.
 - At each step, the simulator is run at the current composition, using fraction_low_risk = 1 - x_t.
-- Each step uses multiple independent replications and averages terminal equity before updating. This reduces the chance that one random shock determines the direction of adaptation.
+- Each step uses multiple independent replications and averages terminal equity before updating.
 - The update is:
   x_(t+1) = clip[x_t + eta*x_t*(1-x_t)*(U_R-U_L), 0, 1]
 - U_R and U_L are the mean terminal-equity payoffs already defined for E5.
-- The same deterministic seed rule is used for reproducibility; later steps use new stochastic environments.
 - The experiment records x_t, both payoffs, their difference, and the systemic-failure rate observed at each step.
 
-Interpretation:
-- A movement in x means the simulated population composition responds to the model's payoff difference; it is not evidence that real institutions adapt this way.
-- Because terminal-equity differences can be small, eta is a sensitivity parameter controlling the speed of adaptation, not a calibrated behavioural constant.
-- This implementation is population-level: institutions are not individually switching identities inside a single network. It is a computational mean-field analogue of a replicator-style rule.
-- If x approaches 0 or 1, the factor x(1-x) naturally slows further movement.
-- Do not interpret the direction of adaptation as a theorem or as evidence about real financial behaviour.
+Current illustrative run:
+- x_0 = 0.50
+- q_L = 0.20
+- q_R = 0.80
+- eta = 0.10
+- 20 steps
+- 100 replications per step
+- final x = 0.5064
 
-## E7 — Robustness
+The risky strategy had a positive payoff advantage at every observed step, but the update was small. This should not be interpreted as convergence to 80% or as a behavioural calibration. It demonstrates that the current payoff differences imply only slow composition change under the chosen update scale.
+
+An important conceptual distinction is:
+- q_R = risk intensity conditional on being a risky institution;
+- x = fraction of institutions choosing the risky strategy.
+
+The composition sweep and adaptive dynamics therefore answer related but different questions.
+
+## E9 — Robustness
 Repeat with:
 - multiple seeds
 - different N
@@ -106,5 +169,5 @@ Repeat with:
 - different shock severity
 - different exposure scales
 
-## E8 — Optional ML
+## E10 — Optional ML
 Train logistic regression/random forest on simulated environments only after the simulator is validated. Prefer held-out parameter regimes over a purely random row split so the model is tested on genuinely different environments.
