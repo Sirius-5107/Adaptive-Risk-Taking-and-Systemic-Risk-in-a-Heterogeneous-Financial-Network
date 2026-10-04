@@ -427,6 +427,7 @@ def run_risk_taking_sweep(
             low_defaults += int((defaults & (groups == 0)).sum())
             high_defaults += int((defaults & (groups == 1)).sum())
 
+            payments = simulation.clearing.payments
             total_payment_shortfall += float(np.sum(1.0 - payments))
             distressed_banks += int(defaults.sum())
             total_unpaid_interbank += float(
