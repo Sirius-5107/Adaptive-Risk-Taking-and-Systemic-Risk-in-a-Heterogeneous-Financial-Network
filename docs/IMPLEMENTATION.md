@@ -33,3 +33,16 @@ Use a NumPy Generator rather than global random state.
 
 ## Coding standards
 Small functions, explicit arrays, type hints, docstrings, no hidden global state, no magic numbers, and no notebook-only logic.
+
+
+## Optimization experiments
+
+The optimization layer is deliberately separated from the simulator.
+
+- E5 generates Monte Carlo sweep points using common random numbers.
+- Risk-intensity optimization post-processes E5 to choose the best tested q_R for each systemic-loss penalty.
+- Risk-composition optimization runs a new Monte Carlo sweep over the fraction x of high-risk institutions and then post-processes it with the same objective form.
+- The objective is always explicit:
+  J = private/aggregate terminal equity - lambda_systemic × unpaid interbank obligations.
+- Optimization results are discrete-grid optima unless an interpolation or continuous optimization method is explicitly added later.
+- The code records continuous distress measures because binary systemic failure can remain zero while partial-payment losses increase.
