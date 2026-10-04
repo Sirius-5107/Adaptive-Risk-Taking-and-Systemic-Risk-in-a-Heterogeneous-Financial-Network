@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
@@ -347,6 +349,9 @@ class RiskTakingSweepPoint:
     mean_terminal_equity_high: float
     default_rate_low: float
     default_rate_high: float
+    mean_payment_shortfall: float
+    distressed_bank_fraction: float
+    mean_unpaid_interbank: float
     trials: int
 
 
@@ -403,6 +408,9 @@ def run_risk_taking_sweep(
         high_equity_total = 0.0
         low_defaults = 0
         high_defaults = 0
+        total_payment_shortfall = 0.0
+        distressed_banks = 0
+        total_unpaid_interbank = 0.0
 
         for trial in range(trials):
             simulation = simulate_once(
@@ -418,6 +426,15 @@ def run_risk_taking_sweep(
             defaults = simulation.clearing.payments < (1.0 - 1e-8)
             low_defaults += int((defaults & (groups == 0)).sum())
             high_defaults += int((defaults & (groups == 1)).sum())
+
+            total_payment_shortfall += float(np.sum(1.0 - payments))
+            distressed_banks += int(defaults.sum())
+            total_unpaid_interbank += float(
+                np.sum(
+                    simulation.network.obligations
+                    * (1.0 - payments[:, None])
+                )
+            )
 
             if systemic_failure(
                 simulation.default_fraction(),
@@ -441,6 +458,15 @@ def run_risk_taking_sweep(
                 mean_terminal_equity_high=high_equity_total / trials,
                 default_rate_low=low_defaults / low_count,
                 default_rate_high=high_defaults / high_count,
+                mean_payment_shortfall=(
+                    total_payment_shortfall
+                    / (trials * simulation.network.obligations.shape[0])
+                ),
+                distressed_bank_fraction=(
+                    distressed_banks
+                    / (trials * simulation.network.obligations.shape[0])
+                ),
+                mean_unpaid_interbank=total_unpaid_interbank / trials,
                 trials=trials,
             )
         )
