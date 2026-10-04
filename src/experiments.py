@@ -454,6 +454,188 @@ def optimize_risk_taking(
     return tuple(results)
 
 
+@dataclass(frozen=True)
+class RiskFractionSweepPoint:
+    """Monte Carlo outcomes for one fraction of high-risk institutions."""
+
+    fraction_high_risk: float
+    mean_terminal_equity: float
+    mean_payment_shortfall: float
+    distressed_bank_fraction: float
+    mean_unpaid_interbank: float
+    systemic_failure_probability: float
+    systemic_failure_ci_low: float
+    systemic_failure_ci_high: float
+    trials: int
+
+
+@dataclass(frozen=True)
+class RiskFractionOptimizationPoint:
+    """Objective value for one systemic-risk penalty and risk-taking fraction."""
+
+    lambda_systemic: float
+    fraction_high_risk: float
+    private_payoff: float
+    systemic_loss: float
+    objective: float
+
+
+@dataclass(frozen=True)
+class RiskFractionOptimizationResult:
+    """System-aware optimum for each penalty on network damage."""
+
+    lambda_systemic: float
+    optimal_fraction_high_risk: float
+    optimal_objective: float
+    points: tuple[RiskFractionOptimizationPoint, ...]
+
+
+def run_risk_fraction_sweep(
+    *,
+    values: Sequence[float] = tuple(i / 20 for i in range(1, 20)),
+    trials: int = 2000,
+    systemic_threshold: float = 0.30,
+    confidence: float = 0.95,
+    seed: int = 20261001,
+    q_low: float = 0.20,
+    q_high: float = 0.80,
+) -> tuple[RiskFractionSweepPoint, ...]:
+    """Sweep the population fraction using the high-risk strategy.
+
+    The risky fraction changes group composition while q_low and q_high remain
+    fixed. Common trial seeds are reused across values. Private payoff is mean
+    terminal equity across all institutions; systemic loss is unpaid
+    interbank obligations.
+    """
+    if not values:
+        raise ValueError("values must contain at least one value.")
+    if trials < 1:
+        raise ValueError("trials must be at least 1.")
+    if not 0.0 <= q_low <= 1.0 or not 0.0 <= q_high <= 1.0:
+        raise ValueError("q_low and q_high must be in [0, 1].")
+
+    points: list[RiskFractionSweepPoint] = []
+
+    for fraction_high_risk in values:
+        fraction_high_risk = float(fraction_high_risk)
+        if not 0.0 <= fraction_high_risk <= 1.0:
+            raise ValueError("fraction_high_risk values must be in [0, 1].")
+
+        total_equity = 0.0
+        total_payment_shortfall = 0.0
+        distressed_banks = 0
+        total_unpaid_interbank = 0.0
+        failures = 0
+
+        for trial in range(trials):
+            simulation = simulate_once(
+                seed=seed + trial,
+                fraction_low_risk=1.0 - fraction_high_risk,
+                q_low=q_low,
+                q_high=q_high,
+            )
+
+            payments = simulation.clearing.payments
+            obligations = simulation.network.obligations
+            incoming = payments @ obligations
+            interbank_paid = payments * obligations.sum(axis=1)
+            equity = (
+                simulation.shock.shocked_assets
+                + incoming
+                - simulation.external_liabilities
+                - interbank_paid
+            )
+
+            total_equity += float(equity.mean())
+            total_payment_shortfall += float(np.sum(1.0 - payments))
+            defaults = payments < (1.0 - 1e-8)
+            distressed_banks += int(defaults.sum())
+            total_unpaid_interbank += float(
+                np.sum(obligations * (1.0 - payments[:, None]))
+            )
+
+            if systemic_failure(
+                simulation.default_fraction(),
+                systemic_threshold,
+            ):
+                failures += 1
+
+        mc = estimate_failure_probability(
+            failures, trials, confidence=confidence
+        )
+        n = simulation.network.obligations.shape[0]
+
+        points.append(
+            RiskFractionSweepPoint(
+                fraction_high_risk=fraction_high_risk,
+                mean_terminal_equity=total_equity / trials,
+                mean_payment_shortfall=(
+                    total_payment_shortfall / (trials * n)
+                ),
+                distressed_bank_fraction=distressed_banks / (trials * n),
+                mean_unpaid_interbank=total_unpaid_interbank / trials,
+                systemic_failure_probability=mc.probability,
+                systemic_failure_ci_low=mc.ci_low,
+                systemic_failure_ci_high=mc.ci_high,
+                trials=trials,
+            )
+        )
+
+    return tuple(points)
+
+
+def optimize_risk_fraction(
+    sweep: Sequence[RiskFractionSweepPoint],
+    *,
+    lambdas: Sequence[float] = (0.0, 0.05, 0.10, 0.20, 0.50),
+) -> tuple[RiskFractionOptimizationResult, ...]:
+    """Find the high-risk population fraction maximizing private payoff minus network loss.
+
+    The objective is
+
+        J(x) = U(x) - lambda_systemic * L(x),
+
+    where U is mean terminal equity across all institutions and L is mean
+    unpaid interbank obligations.
+    """
+    if not sweep:
+        raise ValueError("sweep must contain at least one result.")
+    if not lambdas:
+        raise ValueError("lambdas must contain at least one value.")
+    if any(float(value) < 0.0 for value in lambdas):
+        raise ValueError("lambdas must be non-negative.")
+
+    results: list[RiskFractionOptimizationResult] = []
+
+    for lambda_systemic in lambdas:
+        penalty = float(lambda_systemic)
+        points = tuple(
+            RiskFractionOptimizationPoint(
+                lambda_systemic=penalty,
+                fraction_high_risk=point.fraction_high_risk,
+                private_payoff=point.mean_terminal_equity,
+                systemic_loss=point.mean_unpaid_interbank,
+                objective=(
+                    point.mean_terminal_equity
+                    - penalty * point.mean_unpaid_interbank
+                ),
+            )
+            for point in sweep
+        )
+        optimum = max(points, key=lambda point: point.objective)
+        results.append(
+            RiskFractionOptimizationResult(
+                lambda_systemic=penalty,
+                optimal_fraction_high_risk=optimum.fraction_high_risk,
+                optimal_objective=optimum.objective,
+                points=points,
+            )
+        )
+
+    return tuple(results)
+
+
+
 def run_risk_taking_sweep(
     *,
     values: Sequence[float] = (0.40, 0.50, 0.60, 0.70, 0.80),
