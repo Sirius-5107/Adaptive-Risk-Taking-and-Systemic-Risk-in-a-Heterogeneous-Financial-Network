@@ -32,7 +32,9 @@ After the external shock:
 A'_i = A_i[(1-q_i) + q_i R_i]
 
 For E5, private outcome is measured by terminal equity after clearing:
+
 W_i = A'_i + I_i - X_i - P_i
+
 where P_i is the interbank amount actually paid. This is an experiment-specific payoff measure, not a universal definition of investor utility.
 
 ## 4. Clearing
@@ -67,7 +69,55 @@ D >= tau
 
 tau = 0.30 is an **experimental threshold**, not a universal definition of systemic failure.
 
-## 6. Monte Carlo
+An important modelling result is that this binary event can be too coarse. In the baseline risk-taking sweep, systemic failure remained at 0% even though distress increased materially. Therefore the project also records continuous network-distress measures.
+
+## 6. Distress measures
+For payment fractions r_i:
+
+Mean payment shortfall:
+S = (1/N) Σ_i (1-r_i)
+
+Distressed-bank fraction:
+D_distress = number of {i : r_i < 1} / N
+
+Total unpaid interbank obligations:
+L = Σ_i,j E_ij(1-r_i)
+
+These measures capture partial-payment losses that a binary systemic-failure indicator can miss.
+
+## 7. Risk optimization
+Two separate decisions are studied.
+
+### 7.1 Risk intensity
+
+q_R is the risky-asset exposure of institutions already classified as high-risk.
+
+For a systemic penalty λ:
+
+J(q_R) = U_R(q_R) - λ L(q_R)
+
+where U_R is mean terminal equity of high-risk institutions and L is mean unpaid interbank obligations.
+
+The implementation evaluates this objective on a discrete q_R grid, so the result is the **best tested exposure**, not an analytical continuous optimum.
+
+### 7.2 Risk participation
+
+x is the fraction of institutions using the high-risk strategy.
+
+Holding q_L and q_R fixed, define:
+
+J(x) = U(x) - λ L(x)
+
+where U(x) is mean terminal equity across all institutions and L(x) is mean unpaid interbank obligations.
+
+The composition sweep reuses the same trial seeds across x values, implementing a common-random-number comparison. The current grid is x = 0.05, 0.10, ..., 0.95.
+
+This separates two questions that should not be conflated:
+
+1. How risky should a risky institution be?
+2. How many institutions should be risky?
+
+## 8. Monte Carlo
 Run the stochastic experiment M times.
 
 SR_hat = systemic failures / M
@@ -77,10 +127,11 @@ SE = sqrt(SR_hat(1-SR_hat)/M)
 
 The interval measures simulation uncertainty conditional on the model; it does not validate the model itself.
 
-## 7. Adaptive dynamics
+## 9. Adaptive dynamics
 Let x_t be the fraction using the risky strategy.
 
 A simple replicator-style update is:
+
 x_(t+1) = clip[x_t + eta*x_t*(1-x_t)*(U_R-U_L), 0, 1]
 
 where U_R and U_L are average payoffs for risky and conservative strategies.
@@ -93,5 +144,7 @@ In E6, the simulator applies this rule repeatedly. At each step, x_t determines 
 H1: Cross-group connectivity changes systemic-risk probability.
 H2: More severe shocks increase systemic risk.
 H3: Connection placement matters, not only total density.
-H4: Adaptation changes final strategy composition.
-H5: Private payoff and system-level stability can diverge.
+H4: Private payoff and system-level stability can diverge.
+H5: Internalizing systemic losses lowers the optimal intensity and/or population share of risk-taking.
+
+The adaptive-dynamics experiment is used to study the dynamic counterpart of the composition problem rather than being treated as proof of a particular behavioural law.
