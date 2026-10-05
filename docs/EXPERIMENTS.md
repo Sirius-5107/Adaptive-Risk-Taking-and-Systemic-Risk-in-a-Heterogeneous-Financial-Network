@@ -1,14 +1,14 @@
 # Experiments
 
 ## E0 — Deterministic clearing
-Build hand-checkable cases:
+Hand-checkable cases:
 1. No shock
 2. One isolated default
 3. A→B contagion
 4. A→B→C→D cascade
 5. Disconnected components
 
-Expected behaviour must be calculated by hand before coding.
+Expected behaviour is calculated by hand before coding.
 
 ## E1 — Baseline Monte Carlo
 Measure:
@@ -18,156 +18,114 @@ Measure:
 - Monte Carlo uncertainty
 
 ## E2 — Cross-group connectivity
-Sweep p_c and measure systemic-risk probability and group losses.
+Sweep p_c while holding the baseline model fixed.
 
-Implementation:
-- src/experiments.py provides a reproducible parameter-sweep helper.
-- Baseline grid: p_cross = 0.00, 0.02, ..., 0.20.
-- p_within, balance-sheet parameters, shock parameters, systemic threshold, and trial count are held fixed.
-- Each p_cross value uses the same trial seed sequence. This common-random-number design reduces noise when comparing parameter values.
-- The sweep changes both cross-group connectivity and expected overall network density. It therefore does not isolate network placement at fixed density; that is the purpose of E4.
-
-Interpretation rule:
-- Do not treat a monotonic pattern as evidence of a theorem.
-- Report Monte Carlo confidence intervals and inspect whether differences are large relative to simulation uncertainty.
-- Preserve the baseline parameter choice independently of observed results.
+- Grid: p_cross = 0.00, 0.02, ..., 0.20.
+- Same trial seed sequence across values.
+- This changes both cross-group connectivity and expected overall density; E4 isolates placement at fixed expected density.
 
 ## E3 — Shock severity
-Vary low_return (R_L) while keeping the network, risky exposure fractions, high-state return, shock probability, balance sheets, and clearing settings fixed.
+Vary adverse risky-asset return R_L:
+- 0.90, 0.80, 0.70, 0.60, 0.50
+- Baseline: R_L = 0.70.
+- Same trial seed sequence across values.
 
-Baseline grid:
-- R_L = 0.90, 0.80, 0.70, 0.60, 0.50
-- The existing baseline is R_L = 0.70.
-
-Interpretation:
-- Lower R_L means a more severe adverse risky-asset state.
-- Because the same trial seed sequence is reused across all values, the realized bad/good shock pattern is held comparable.
-- Report systemic-failure probability and Monte Carlo confidence intervals.
-- This is a shock-severity experiment, not a calibration exercise; the grid is chosen before inspecting results.
-- A result that looks monotonic is still an empirical property of this simulator, not a general theorem.
+This is a shock-severity sensitivity experiment, not calibration.
 
 ## E4 — Heterogeneous network structure
-Hold expected directed network density fixed while varying how links are placed within versus across the two risk groups. This tests whether network structure matters beyond overall connectivity.
+Hold expected directed network density fixed while changing within- versus cross-group link placement.
 
-Implementation:
-- run_matched_density_network_sweep() varies p_cross and solves for p_within so expected density equals the baseline configuration (p_within=0.10, p_cross=0.05).
-- Default p_cross grid: 0.000, 0.025, 0.050, 0.075, 0.100, 0.125.
-- For the 50/50 baseline, p_within values are approximately 0.151, 0.126, 0.100, 0.075, 0.049, 0.024.
-- The same Monte Carlo trial seed sequence is reused across configurations.
-- Matching is on expected density, not realized edge count. Individual random networks can still contain different numbers of edges; exact edge-count matching would require a different network-construction design.
+- Baseline: p_within=0.10, p_cross=0.05.
+- p_cross grid: 0.000, 0.025, 0.050, 0.075, 0.100, 0.125.
+- p_within is solved to preserve expected density.
+- Same trial seed sequence across configurations.
 
-Interpretation:
-- E4 isolates link placement more cleanly than E2 because expected density is controlled.
-- Report Monte Carlo confidence intervals.
-- No monotonic relationship is assumed in advance.
-- The baseline parameter choice remains fixed independently of observed results.
+Matching is on expected density, not realized edge count.
 
 ## E5 — Risk-taking
+Vary high-risk risky-asset exposure q_R while fixing q_L=0.20.
 
-Vary q_R while holding q_L and the rest of the baseline model fixed.
+- Grid: 0.20, 0.25, ..., 0.80.
+- 2,000 trials per point.
+- Same trial seed sequence across values.
+- Record private payoff, group defaults, payment shortfall, distressed-bank fraction, unpaid interbank obligations, and systemic-failure probability.
 
-Implementation:
-- run_risk_taking_sweep() varies q_R over 0.20, 0.25, ..., 0.80 for the current optimization study.
-- Each value uses the same trial seed sequence, so the network realization and shock uniforms are comparable across exposure levels.
-- Private payoff is mean terminal equity after clearing, computed separately for low-risk and high-risk groups.
-- Also record payment shortfall, distressed-bank fraction, unpaid interbank obligations, group-specific default rates, and systemic-failure probability with its Monte Carlo confidence interval.
-- q_L remains fixed at 0.20.
-- The current study uses 2,000 trials per grid point.
+Observed:
+- high-risk terminal equity: ~0.5039 → ~0.5163
+- mean unpaid interbank obligations: ~0.0257 → ~0.0842
+- distressed-bank fraction: ~0.41% → ~0.94%
+- binary systemic failure: 0% throughout the tested grid
 
-Observed result:
-- mean high-risk terminal equity increased from about 0.5039 at q_R=0.20 to 0.5163 at q_R=0.80.
-- mean unpaid interbank obligations increased from about 0.0257 to 0.0842.
-- distressed-bank fraction increased from about 0.41% to 0.94%.
-- binary systemic failure remained 0% across the tested grid.
-
-The binary failure metric was therefore too coarse to be the sole optimization loss.
+The binary failure metric is therefore too coarse to be the sole loss measure.
 
 ## E6 — System-aware risk-intensity optimization
+Post-process E5 using
 
-Use the E5 sweep to evaluate:
-
-J(q_R) = U_R(q_R) - lambda_systemic * L(q_R)
+J(q_R) = U_R(q_R) - λ L(q_R)
 
 where U_R is mean terminal equity of high-risk institutions and L is mean unpaid interbank obligations.
 
-Because this is post-processing of the same Monte Carlo sweep, optimization adds no simulation noise.
+Best tested q_R:
+- λ=0.00 → 0.80
+- λ=0.05 → 0.80
+- λ=0.10 → 0.80
+- λ=0.20 → 0.50
+- λ=0.50 → 0.35
 
-Current best tested q_R values:
-- lambda=0.00 -> q_R=0.80
-- lambda=0.05 -> q_R=0.80
-- lambda=0.10 -> q_R=0.80
-- lambda=0.20 -> q_R=0.50
-- lambda=0.50 -> q_R=0.35
-
-Interpretation:
-- when systemic losses are ignored, the tested private optimum is at the highest exposure in the grid;
-- increasing the systemic penalty shifts the best tested exposure downward.
-
-These are grid optima, not continuous analytical optima.
+These are discrete-grid optima, not continuous analytical optima.
 
 ## E7 — Risk-taking population composition
+Vary x, the fraction of institutions using the high-risk strategy, while fixing q_L=0.20 and q_R=0.80.
 
-The second decision is the fraction x of institutions using the high-risk strategy, while q_L and q_R are fixed.
+- Grid: x = 0.05, 0.10, ..., 0.95.
+- 2,000 trials per point.
+- Same trial seed sequence across values.
+- Record aggregate terminal equity and network-distress measures.
 
-Implementation:
-- run_risk_fraction_sweep() varies x over 0.05, 0.10, ..., 0.95.
-- q_L=0.20 and q_R=0.80 in the current study.
-- Each x uses the same trial seed sequence.
-- The sweep records mean terminal equity across all institutions, payment shortfall, distressed-bank fraction, unpaid interbank obligations, and systemic-failure probability.
-- The objective is:
+Objective:
 
-J(x) = U(x) - lambda_systemic * L(x)
+J(x) = U(x) - λ L(x)
 
-where U(x) is mean terminal equity across the whole population.
+Best tested x:
+- λ=0.00 → 0.95
+- λ=0.05 → 0.55
+- λ=0.10 → 0.40
+- λ=0.20 → 0.30
+- λ=0.50 → 0.20
 
-Current best tested fractions:
-- lambda=0.00 -> x=0.95
-- lambda=0.05 -> x=0.55
-- lambda=0.10 -> x=0.40
-- lambda=0.20 -> x=0.30
-- lambda=0.50 -> x=0.20
-
-The result shows a strong separation between private/aggregate payoff maximization and system-aware composition. As the penalty on unpaid interbank obligations increases, the best tested share of high-risk institutions falls sharply.
-
-These are again discrete-grid optima. They should not be described as exact continuous equilibria.
+The payoff-maximizing composition and system-aware composition differ sharply. These are grid optima, not exact continuous equilibria.
 
 ## E8 — Adaptive dynamics
+Let x_t be the population fraction using the risky strategy.
 
-Let the population fraction using the higher-risk strategy be x_t. Update it from the difference between the two groups' average terminal equity.
+Update:
+x_(t+1) = clip[x_t + η x_t(1-x_t)(U_R-U_L), 0, 1]
 
 Implementation:
-- run_adaptive_dynamics() starts from an interior composition x_0 and runs a fixed number of adaptation steps.
-- At each step, the simulator is run at the current composition, using fraction_low_risk = 1 - x_t.
-- Each step uses multiple independent replications and averages terminal equity before updating.
-- The update is:
-  x_(t+1) = clip[x_t + eta*x_t*(1-x_t)*(U_R-U_L), 0, 1]
-- U_R and U_L are the mean terminal-equity payoffs already defined for E5.
-- The experiment records x_t, both payoffs, their difference, and the systemic-failure rate observed at each step.
-
-Current illustrative run:
-- x_0 = 0.50
-- q_L = 0.20
-- q_R = 0.80
-- eta = 0.10
+- x_0=0.50
+- q_L=0.20
+- q_R=0.80
+- η=0.10
 - 20 steps
 - 100 replications per step
-- final x = 0.5064
+- final x=0.5064 in the illustrative run
 
-The risky strategy had a positive payoff advantage at every observed step, but the update was small. This should not be interpreted as convergence to 80% or as a behavioural calibration. It demonstrates that the current payoff differences imply only slow composition change under the chosen update scale.
+The risky strategy had a positive payoff advantage at every observed step, but the update was small. This is a population-level computational analogue, not a behavioural calibration or proof of convergence to a particular share.
 
-An important conceptual distinction is:
-- q_R = risk intensity conditional on being a risky institution;
-- x = fraction of institutions choosing the risky strategy.
+## Validation status
 
-The composition sweep and adaptive dynamics therefore answer related but different questions.
+Completed before the final optimization results:
+- deterministic clearing and unit-level simulator checks
+- stochastic baseline sanity checks
+- reproducible Monte Carlo sweeps with common random numbers
+- continuous distress metrics to avoid relying only on binary systemic failure
+- explicit objective functions and discrete-grid optimum reporting
+- documented model assumptions and limitations
 
-## E9 — Robustness
-Repeat with:
-- multiple seeds
-- different N
-- different systemic thresholds
-- different shock severity
-- different exposure scales
+The current primary results use seed 20261001 and 2,000 trials for E5/E7. E8 uses the separate stated replication count.
+
+## E9 — Deferred robustness
+A broader robustness study would vary seeds, N, systemic threshold, shock severity, and exposure scales. It is intentionally deferred rather than presented as completed evidence.
 
 ## E10 — Optional ML
-Train logistic regression/random forest on simulated environments only after the simulator is validated. Prefer held-out parameter regimes over a purely random row split so the model is tested on genuinely different environments.
+Deferred. ML on simulated data should only be added after the core simulator and robustness study are complete, with held-out parameter regimes rather than a purely random row split.
