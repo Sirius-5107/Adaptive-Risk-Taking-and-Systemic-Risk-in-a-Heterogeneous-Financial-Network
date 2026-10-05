@@ -7,7 +7,7 @@ Each institution has:
 - external assets A_i
 - external liabilities X_i
 - interbank obligations B_i = Σ_j E_ij
-- a strategy s_i ∈ {L,R}
+- strategy s_i ∈ {L,R}
 
 L = lower-risk/conservative; R = higher-risk/risky.
 
@@ -19,7 +19,7 @@ Baseline:
 p_LL = p_RR = p_w
 p_LR = p_RL = p_c
 
-This lets us study whether *where* connections occur matters in addition to total network density.
+This lets us study whether where connections occur matters in addition to total network density.
 
 ## 3. Risk-taking
 Strategy s determines risky-asset fraction q_i. Baseline q_R > q_L.
@@ -67,9 +67,9 @@ D = number of defaults / N.
 For the baseline experiment, define a systemic event as:
 D >= tau
 
-tau = 0.30 is an **experimental threshold**, not a universal definition of systemic failure.
+tau = 0.30 is an experimental threshold, not a universal definition of systemic failure.
 
-An important modelling result is that this binary event can be too coarse. In the baseline risk-taking sweep, systemic failure remained at 0% even though distress increased materially. Therefore the project also records continuous network-distress measures.
+The binary event can be too coarse. In E5, systemic failure remained at 0% even though continuous distress increased materially.
 
 ## 6. Distress measures
 For payment fractions r_i:
@@ -89,31 +89,24 @@ These measures capture partial-payment losses that a binary systemic-failure ind
 Two separate decisions are studied.
 
 ### 7.1 Risk intensity
-
 q_R is the risky-asset exposure of institutions already classified as high-risk.
-
-For a systemic penalty λ:
 
 J(q_R) = U_R(q_R) - λ L(q_R)
 
 where U_R is mean terminal equity of high-risk institutions and L is mean unpaid interbank obligations.
 
-The implementation evaluates this objective on a discrete q_R grid, so the result is the **best tested exposure**, not an analytical continuous optimum.
+The implementation evaluates this objective on a discrete q_R grid, so the result is the best tested exposure, not an analytical continuous optimum.
 
 ### 7.2 Risk participation
-
 x is the fraction of institutions using the high-risk strategy.
-
-Holding q_L and q_R fixed, define:
 
 J(x) = U(x) - λ L(x)
 
 where U(x) is mean terminal equity across all institutions and L(x) is mean unpaid interbank obligations.
 
-The composition sweep reuses the same trial seeds across x values, implementing a common-random-number comparison. The current grid is x = 0.05, 0.10, ..., 0.95.
+The composition sweep reuses the same trial seeds across x values. The current grid is x = 0.05, 0.10, ..., 0.95.
 
-This separates two questions that should not be conflated:
-
+This separates:
 1. How risky should a risky institution be?
 2. How many institutions should be risky?
 
@@ -136,9 +129,9 @@ x_(t+1) = clip[x_t + eta*x_t*(1-x_t)*(U_R-U_L), 0, 1]
 
 where U_R and U_L are average payoffs for risky and conservative strategies.
 
-This is a transparent computational analogue, **not a reproduction of published analytical dynamics**.
+This is a transparent computational analogue, not a reproduction of published analytical dynamics.
 
-In E6, the simulator applies this rule repeatedly. At each step, x_t determines the population fraction using R, fresh stochastic environments are simulated, and U_R and U_L are estimated from average terminal equity. Multiple replications per step reduce simulation noise. This is a population-level mean-field mechanism: individual institutions do not switch strategy inside one network.
+In E8, the simulator applies this rule repeatedly. At each step, x_t determines the population fraction using R, fresh stochastic environments are simulated, and U_R and U_L are estimated from average terminal equity. Multiple replications per step reduce simulation noise. This is a population-level mean-field mechanism: individual institutions do not switch strategy inside one network.
 
 ## Hypotheses
 H1: Cross-group connectivity changes systemic-risk probability.
@@ -147,4 +140,4 @@ H3: Connection placement matters, not only total density.
 H4: Private payoff and system-level stability can diverge.
 H5: Internalizing systemic losses lowers the optimal intensity and/or population share of risk-taking.
 
-The adaptive-dynamics experiment is used to study the dynamic counterpart of the composition problem rather than being treated as proof of a particular behavioural law.
+The adaptive-dynamics experiment studies the dynamic counterpart of the composition problem rather than proving a particular behavioural law.
